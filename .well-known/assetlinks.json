@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "REMPLACE_PAR_TON_PACKAGE_NAME",
+      "package_name": "com.classytaximoto.laoka",
       "sha256_cert_fingerprints": [
-        "REMPLACE:PAR:TON:SHA256:DE:SIGNATURE:EN:MAJUSCULES:SEPARE:PAR:DES:DEUX:POINTS"
+        "7A:B0:B8:3A:22:38:4E:FF:30:60:C3:42:FD:E6:06:E8:67:7D:84:48:2B:66:A9:55:87:2E:AD:9D:1D:A9:7B:17"
       ]
     }
   }
