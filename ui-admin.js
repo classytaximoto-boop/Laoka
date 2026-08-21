@@ -156,8 +156,15 @@ const ADMIN = {
         <div class="field-error hidden" id="prErr"></div>
         <button type="submit" class="btn btn-primary btn-block">Enregistrer</button>
       </form>
+      ${!isEdit ? `
+      <div class="field" style="margin-top:14px;">
+        <button type="button" class="btn btn-secondary btn-block" id="prToggleLaokaWizard">🍽️ Détails laoka (13 étapes) — facultatif ▾</button>
+        <p class="muted small">Ho an'ny mpampiasa te hamorona koa ny laoka feno mifandray amin'ity akora ity (sokajy, atao, tsy mifanaraka, sns.) tsy misy dingana hafa.</p>
+        <div id="prLaokaWizardDrawer" class="hidden card" style="margin-top:10px;"></div>
+      </div>` : ""}
     `);
     document.getElementById("closeProdModal").addEventListener("click", () => UI.closeModal());
+    if (!isEdit) this.bindLaokaWizardDrawer();
     document.getElementById("prodForm").addEventListener("submit", (e) => {
       e.preventDefault();
       const name = document.getElementById("prName").value.trim();
@@ -201,6 +208,44 @@ const ADMIN = {
       UI.closeModal();
       this.renderProduits();
       UI.toast("Prix mis à jour — les recettes se recalculent automatiquement.");
+    });
+  },
+
+  /** Tiroir facultatif "Détails laoka (13 étapes)" à l'intérieur de "Ajouter un produit".
+   *  Déplié : lance LAOKA_FORM_UI en mode "embedded" dans le conteneur du tiroir, pré-rempli
+   *  avec le nom/prix/unité déjà saisis dans le formulaire produit (mais reste indépendant :
+   *  fermer le tiroir ou soumettre le produit seul n'annule pas le produit lui-même).
+   *  Replié à nouveau : le wizard est réinitialisé (pas de conservation d'un brouillon partiel). */
+  bindLaokaWizardDrawer() {
+    const toggleBtn = document.getElementById("prToggleLaokaWizard");
+    const drawer = document.getElementById("prLaokaWizardDrawer");
+    let open = false;
+    toggleBtn.addEventListener("click", () => {
+      open = !open;
+      drawer.classList.toggle("hidden", !open);
+      toggleBtn.textContent = open ? "🍽️ Détails laoka (13 étapes) — facultatif ▴" : "🍽️ Détails laoka (13 étapes) — facultatif ▾";
+      if (open) {
+        const name = document.getElementById("prName").value.trim();
+        const price = Number(document.getElementById("prPrice").value) || 0;
+        const unit = document.getElementById("prUnit").value;
+        LAOKA_FORM_UI.renderEmbedded(drawer, {
+          prefill: { name, price, unit, priceUnit: unit },
+          onExit: () => {
+            open = false;
+            drawer.classList.add("hidden");
+            drawer.innerHTML = "";
+            toggleBtn.textContent = "🍽️ Détails laoka (13 étapes) — facultatif ▾";
+          },
+          onSaved: () => {
+            open = false;
+            drawer.classList.add("hidden");
+            drawer.innerHTML = "";
+            toggleBtn.textContent = "🍽️ Détails laoka (13 étapes) — facultatif ▾ (laoka enregistré ✅)";
+          },
+        });
+      } else {
+        drawer.innerHTML = "";
+      }
     });
   },
 
