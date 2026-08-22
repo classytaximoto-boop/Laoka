@@ -116,6 +116,12 @@ const MAHANDRO_UI = {
     const prevBtn = document.getElementById("mahandroPrev");
     const nextBtn = document.getElementById("mahandroNext");
 
+    // Repart toujours d'un état neutre : évite qu'un transform/transition
+    // laissé par un drag interrompu (touchcancel raté, changement d'étape via
+    // les boutons pendant un swipe, etc.) ne reste collé sur le nouveau slide.
+    track.style.transition = "";
+    track.style.transform = "";
+
     track.innerHTML = `
       <div class="mahandro-slide fade-in">
         <div class="mahandro-step-num">Dingana ${this.current + 1} / ${this.steps.length}</div>
@@ -173,13 +179,68 @@ const MAHANDRO_UI = {
 
   bindSwipe() {
     const wrap = document.getElementById("mahandroWrap");
+    const threshold = 45;
+    let touchStartY = null;
+    let dragging = false;
+    let axisLocked = null; // "x" ou "y", décidé au premier mouvement significatif
+
+    const getTrack = () => document.getElementById("mahandroTrack");
+
     wrap.addEventListener("touchstart", (e) => {
       this.touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      axisLocked = null;
+      dragging = true;
+      const track = getTrack();
+      if (track) track.style.transition = "none";
     }, { passive: true });
-    wrap.addEventListener("touchend", (e) => {
-      if (this.touchStartX == null) return;
-      const dx = e.changedTouches[0].clientX - this.touchStartX;
-      const threshold = 45;
+
+    // touchmove NON passive : on doit pouvoir appeler preventDefault() une fois
+    // l'axe horizontal détecté, sinon le scroll/bounce du modal (overflow-y: auto
+    // sur .modal-box) peut annuler le geste avant que touchend ne se déclenche
+    // proprement sur mobile réel.
+    wrap.addEventListener("touchmove", (e) => {
+      if (!dragging || this.touchStartX == null) return;
+      const dx = e.touches[0].clientX - this.touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+
+      if (axisLocked == null) {
+        // On attend un déplacement net avant de trancher, pour ne pas gêner
+        // un simple tap ni un vrai scroll vertical.
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        axisLocked = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+
+      if (axisLocked === "x") {
+        // Empêche le navigateur/WebView de traiter ce geste comme un scroll
+        // ou un pull-to-refresh, ce qui coupait le swipe avant touchend.
+        e.preventDefault();
+        const track = getTrack();
+        if (track) {
+          // Retour visuel immédiat : le slide suit le doigt, avec une résistance
+          // aux bords pour indiquer qu'on ne peut pas aller plus loin.
+          const atStart = this.current === 0 && dx > 0;
+          const atEnd = this.current === this.steps.length - 1 && dx < 0;
+          const resisted = atStart || atEnd ? dx * 0.35 : dx;
+          track.style.transform = `translateX(${resisted}px)`;
+        }
+      }
+      // axisLocked === "y" -> on laisse faire, rien à empêcher (pas de scroll ici de toute façon).
+    }, { passive: false });
+
+    const endDrag = (clientX) => {
+      dragging = false;
+      const track = getTrack();
+      if (track) {
+        track.style.transition = "";
+        track.style.transform = "";
+      }
+      if (this.touchStartX == null || axisLocked !== "x") {
+        this.touchStartX = null;
+        axisLocked = null;
+        return;
+      }
+      const dx = clientX - this.touchStartX;
       if (dx < -threshold && this.current < this.steps.length - 1) {
         this.current++;
         this.renderSlide();
@@ -188,6 +249,23 @@ const MAHANDRO_UI = {
         this.renderSlide();
       }
       this.touchStartX = null;
+      axisLocked = null;
+    };
+
+    wrap.addEventListener("touchend", (e) => {
+      if (this.touchStartX == null) return;
+      endDrag(e.changedTouches[0].clientX);
+    }, { passive: true });
+
+    wrap.addEventListener("touchcancel", () => {
+      dragging = false;
+      const track = getTrack();
+      if (track) {
+        track.style.transition = "";
+        track.style.transform = "";
+      }
+      this.touchStartX = null;
+      axisLocked = null;
     }, { passive: true });
   },
 
