@@ -186,6 +186,7 @@ const DATA = {
     const categoryToType = {
       viandes: "hena", vorona: "vorona", legumes: "legumes", legumineuses: "voamaina",
       atody: "atody", ambany_tanana: "ambany_tanana", hazandrano: "hazan_drano",
+      trondro_maina: "hazan_drano",
       hazandranomasina: "hazandranomasina", fruits_de_mer: "fruits_de_mer",
       special_boucher: "special_boucher", holatra: "holatra",
     };
@@ -222,9 +223,18 @@ const DATA = {
     }
   },
 
-  /** Sauvegarde l'état actuel dans localStorage */
+  /** Sauvegarde l'état actuel dans localStorage. Renvoie true en cas de succès, false sinon — les
+   *  appelants qui doivent informer l'utilisateur (toast) doivent vérifier ce retour plutôt que de
+   *  supposer que la sauvegarde a réussi. Échec le plus courant : quota localStorage dépassé (ex.
+   *  accumulation de photos importées en base64 sur les laoka, voir ui-laoka-form.js photoImage). */
   saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      return true;
+    } catch (err) {
+      console.error("DATA.saveData a échoué :", err);
+      return false;
+    }
   },
 
   /** Réinitialise toutes les données aux valeurs de démonstration */
